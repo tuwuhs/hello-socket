@@ -112,34 +112,44 @@ int main(int argc, int* argv[])
 	int port = ntohs(addr_in->sin_port);
 	printf("Accepted connection from %s:%d\n", addrStr, port);
 	
+	// Close the listening socket to only allow one connection
+	close(serverfd);
+	
 	char buffer[256];
 	memset(buffer, 0, sizeof(buffer));
-	rv = read(connfd, buffer, sizeof(buffer));
-	if (rv < 0)
+	while (1)
 	{
-		// Read failed
-		// TODO: handle
-		printf("Read failed.\n");
-		close(connfd);
-		close(serverfd);
-		exit(-1);
-	}
-	
-	printf("%s\n", buffer);
-	
-	rv = write(connfd, buffer, strlen(buffer));
-	if (rv < 0)
-	{
-		// Read failed
-		// TODO: handle
-		printf("Write failed.\n");
-		close(connfd);
-		close(serverfd);
-		exit(-1);
+		rv = read(connfd, buffer, sizeof(buffer));
+		if (rv == 0)
+		{
+			printf("Connection closed by peer\n");
+			break;
+		}
+		else if (rv < 0)
+		{
+			// Read failed
+			// TODO: handle
+			printf("Read failed.\n");
+			close(connfd);
+			close(serverfd);
+			exit(-1);
+		}
+		
+		printf("%s\n", buffer);
+		
+		rv = write(connfd, buffer, strlen(buffer));
+		if (rv < 0)
+		{
+			// Read failed
+			// TODO: handle
+			printf("Write failed.\n");
+			close(connfd);
+			close(serverfd);
+			exit(-1);
+		}
 	}
 	
 	close(connfd);
-	close(serverfd);
 	
 	return 0;
 }
