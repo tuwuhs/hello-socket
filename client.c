@@ -21,22 +21,35 @@ int main(int argc, int* argv[])
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	rv = getaddrinfo("127.0.0.1", "10000", &hints, &result);
-
+	if (rv != 0)
+	{
+		// getaddrinfo failed
+		// TODO: handle
+		// Q: do we need to free result?
+		printf("getaddrinfo() failed.\n");
+		exit(-1);
+	}
+	
 	// Loop through the resulting linked list
 	// Connect to the first one that works
 	struct addrinfo* r;
 	for (r = result; r; r = r->ai_next)
 	{
+		// Assume r->sa_family == AF_INET, so we can cast to sockaddr_in
+		struct sockaddr_in* addr_in = (struct sockaddr_in*) r->ai_addr;
+		char* addrStr = inet_ntoa(addr_in->sin_addr);
+		int port = ntohs(addr_in->sin_port);
+		printf("--> %s:%d\n", addrStr, port);
+		
 		fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
 		if (fd < 0)
 		{
 			// Create socket failed
+			printf("Create socket failed\n");
 			continue;
 		}
 		
-		struct sockaddr_in* addr_in = (struct sockaddr_in*) r->ai_addr;
-		char* addrStr = inet_ntoa(addr_in->sin_addr);
-		printf("Connecting to %s... ", addrStr);
+		printf("Connecting... ");
 		rv = connect(fd, r->ai_addr, r->ai_addrlen);
 		if (rv < 0)
 		{
@@ -50,16 +63,15 @@ int main(int argc, int* argv[])
 		break;
 	}
 	
+	freeaddrinfo(result);
+	
 	if (!r)
 	{
 		// All available result failed connecting
 		// TODO: properly handle
-		printf("Connect failed to all the resulting addrinfos.\n");
-		freeaddrinfo(result);
+		printf("Connect failed to all addrinfos.\n");
 		exit(-1);
 	}
-	
-	freeaddrinfo(result);
 	
 	char buffer[256] = "Hello world!";
 	rv = write(fd, buffer, strlen(buffer));
@@ -68,6 +80,7 @@ int main(int argc, int* argv[])
 		// Write failed
 		// TODO: handle
 		printf("Write failed.\n");
+		close(fd);
 		exit(-1);
 	}
 	
@@ -78,10 +91,13 @@ int main(int argc, int* argv[])
 		// Read failed
 		// TODO: handle
 		printf("Read failed.\n");
+		close(fd);
 		exit(-1);
 	}
 	
 	printf("%s\n", buffer);
+	
+	close(fd);
 	
 	return 0;
 }

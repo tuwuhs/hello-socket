@@ -4,10 +4,8 @@ all: client server
 	
 
 client: client.c
-	$(CC) $^ -o $@
 
-server:
-	
+server: server.c
 
 .PHONY: clean
 clean:
